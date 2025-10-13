@@ -3,6 +3,7 @@
 A fully homomorphic encrypted (FHE) Bitcoin memory game built with FHEVM and Zama's technology. Players encrypt their Bitcoin choices and reveal them after a waiting period to see if they match.
 
 ## 🎮 Game Overview
+play：https://fhe-bitcoin-memory-game.vercel.app/
 
 This is a decentralized application (dApp) where players:
 1. **Choose a Bitcoin** (₿ Bitcoin 1, ₿ Bitcoin 2, or ₿ Bitcoin 3) and encrypt their choice
