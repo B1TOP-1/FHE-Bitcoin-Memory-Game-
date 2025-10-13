@@ -25,6 +25,7 @@ let fhevmInstance = null;
 let userAddress = null;
 let selectedChoice = null;
 let countdownInterval = null;
+let isProcessing = false; // 防止重复点击
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', async () => {
@@ -73,10 +74,19 @@ async function connectWallet() {
     try {
         showLoading('Connecting wallet...');
         
+        // Check if MetaMask is installed
+        if (!window.ethereum) {
+            throw new Error('MetaMask is not installed. Please install MetaMask to continue.');
+        }
+        
         // Request account access
         const accounts = await window.ethereum.request({ 
             method: 'eth_requestAccounts' 
         });
+        
+        if (!accounts || accounts.length === 0) {
+            throw new Error('No accounts found. Please unlock MetaMask and try again.');
+        }
         
         userAddress = accounts[0];
         
@@ -84,10 +94,38 @@ async function connectWallet() {
         provider = new ethers.BrowserProvider(window.ethereum);
         signer = await provider.getSigner();
         
-        // Check network
+        // Check network and auto-switch if needed
         const network = await provider.getNetwork();
         if (Number(network.chainId) !== SEPOLIA_CHAIN_ID) {
-            throw new Error('Please switch to Sepolia Testnet');
+            try {
+                // Try to switch to Sepolia
+                await window.ethereum.request({
+                    method: 'wallet_switchEthereumChain',
+                    params: [{ chainId: '0xaa36a7' }], // Sepolia chain ID
+                });
+                // Wait a moment for the switch to complete
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            } catch (switchError) {
+                // If Sepolia is not added, add it
+                if (switchError.code === 4902) {
+                    await window.ethereum.request({
+                        method: 'wallet_addEthereumChain',
+                        params: [{
+                            chainId: '0xaa36a7',
+                            chainName: 'Sepolia Test Network',
+                            rpcUrls: ['https://sepolia.infura.io/v3/'],
+                            nativeCurrency: {
+                                name: 'SepoliaETH',
+                                symbol: 'SepoliaETH',
+                                decimals: 18
+                            },
+                            blockExplorerUrls: ['https://sepolia.etherscan.io']
+                        }]
+                    });
+                } else {
+                    throw new Error('Please switch to Sepolia Testnet manually');
+                }
+            }
         }
         
         // Initialize contract
@@ -181,6 +219,14 @@ async function startGame() {
         return;
     }
     
+    // 防止重复点击
+    if (isProcessing) {
+        console.log('Game is already processing, please wait...');
+        return;
+    }
+    
+    isProcessing = true;
+    
     try {
         // Check if there's already an active game
         console.log('[DEBUG] Checking if game is active...');
@@ -242,7 +288,8 @@ async function startGame() {
         
         // 现在开始10秒倒计时，让用户等待选择第二个比特币
         console.log('[DEBUG] Starting 10-second countdown before second choice...');
-        await startCountdownAnimation(10);
+        // 只显示等待动画，不显示第二个横向循环动画
+        showWaitingSection(10);
         
         // Reset selection
         selectedChoice = null;
@@ -264,6 +311,9 @@ async function startGame() {
         }
         
         hideInlineLoading('startGame');
+    } finally {
+        // 重置处理状态
+        isProcessing = false;
     }
 }
 
@@ -273,6 +323,14 @@ async function revealChoice() {
         alert('Please select a Bitcoin first!');
         return;
     }
+    
+    // 防止重复点击
+    if (isProcessing) {
+        console.log('Game is already processing, please wait...');
+        return;
+    }
+    
+    isProcessing = true;
     
     try {
         showInlineLoading('reveal', '🔐 Encrypting second choice...');
@@ -332,6 +390,9 @@ async function revealChoice() {
         console.error('Reveal error:', error);
         alert(`Failed to reveal: ${error.message}`);
         hideInlineLoading('reveal');
+    } finally {
+        // 重置处理状态
+        isProcessing = false;
     }
 }
 
@@ -612,7 +673,7 @@ function showWaitingSection(seconds) {
         countdownContainer.style.display = 'none';
     }
     
-    // Start Bitcoin wheel animation during encryption
+    // Start Bitcoin wheel animation during encryption (只显示一次动画)
     startBitcoinEncryptionAnimation();
     
     // Auto transition after 10 seconds
@@ -688,76 +749,7 @@ function startBitcoinEncryptionAnimation() {
     }, 1000);
 }
 
-// Start shuffle animation for crypto cards
-function startShuffleAnimation() {
-    const waitingSection = document.getElementById('waitingSection');
-    
-    // Remove any existing shuffle container
-    const existingShuffle = waitingSection.querySelector('.shuffle-container');
-    if (existingShuffle) {
-        existingShuffle.remove();
-    }
-    
-    // Create animated crypto cards
-    const shuffleContainer = document.createElement('div');
-    shuffleContainer.className = 'shuffle-container';
-    shuffleContainer.innerHTML = `
-        <div class="shuffle-title">🔐 Encrypting your choice...</div>
-        <div class="shuffle-cards">
-            <div class="shuffle-card" data-index="0">
-                <div class="crypto-icon btc">₿</div>
-                <div class="crypto-name">Bitcoin</div>
-            </div>
-            <div class="shuffle-card" data-index="1">
-                <div class="crypto-icon btc">₿</div>
-                <div class="crypto-name">Bitcoin</div>
-            </div>
-            <div class="shuffle-card" data-index="2">
-                <div class="crypto-icon btc">₿</div>
-                <div class="crypto-name">Bitcoin</div>
-            </div>
-        </div>
-        <div class="shuffle-status">Your choice is being encrypted and secured...</div>
-    `;
-    
-    // Insert shuffle animation after the info text
-    const infoText = waitingSection.querySelector('.info-text');
-    if (infoText) {
-        infoText.insertAdjacentElement('afterend', shuffleContainer);
-    } else {
-        waitingSection.appendChild(shuffleContainer);
-    }
-    
-    // Start shuffle animation
-    const cards = shuffleContainer.querySelectorAll('.shuffle-card');
-    let animationCount = 0;
-    const maxAnimations = 6; // 3 seconds with 0.5s intervals
-    
-    // Start circular shuffle animation
-    let currentPosition = 0;
-    const shuffleInterval = setInterval(() => {
-        // Remove all shuffle classes first
-        cards.forEach(card => {
-            card.classList.remove('shuffling');
-        });
-        
-        // Add shuffle class to current card in cycle
-        cards[currentPosition].classList.add('shuffling');
-        
-        // Move to next position in cycle (0→1→2→0)
-        currentPosition = (currentPosition + 1) % cards.length;
-        
-        animationCount++;
-        if (animationCount >= maxAnimations) {
-            clearInterval(shuffleInterval);
-            // Final state - all cards stop shuffling
-            cards.forEach(card => {
-                card.classList.remove('shuffling');
-                card.classList.add('final');
-            });
-        }
-    }, 500);
-}
+// 删除第二个横向循环动画函数 - 只保留第一个动画
 
 // Show Inline Loading for specific section
 function showInlineLoading(sectionId, message) {
