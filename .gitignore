@@ -1,0 +1,44 @@
+# Hardhat files
+cache/
+artifacts/
+fhevmTemp/
+
+# TypeChain files
+types/
+
+# Coverage directory
+coverage/
+coverage.json
+
+# Hardhat TypeScript cache
+*.tsbuildinfo
+
+# Dependency directories
+node_modules/
+
+# TypeScript build output
+dist/
+
+# Environment variables
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Deployment outputs
+deployments/localhost/
+deployments/hardhat/
+
+# Keep sepolia deployments
+!deployments/sepolia/
+

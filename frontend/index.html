@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>₿ Bitcoin Memory Game - FHE Edition</title>
+    <link rel="icon" type="image/svg+xml" href="/public/favicon.svg">
+    <link rel="stylesheet" href="styles.css">
+    <!-- Zama Relayer SDK CDN -->
+    <script src="https://cdn.zama.ai/relayer-sdk-js/0.2.0/relayer-sdk-js.umd.cjs" type="text/javascript"></script>
+</head>
+<body>
+    <!-- Top Right Wallet Info -->
+    <div class="wallet-top-right" id="walletTopRight">
+        <button id="connectWallet" class="btn-wallet-connect">
+            🔗 连接钱包
+        </button>
+        <div id="walletInfo" class="wallet-info-compact hidden">
+            <div class="wallet-detail">
+                <span class="wallet-icon">👤</span>
+                <span id="walletAddress" class="wallet-text"></span>
+            </div>
+            <div class="wallet-detail">
+                <span class="wallet-icon">💰</span>
+                <span id="walletBalance" class="wallet-text"></span>
+            </div>
+            <div class="wallet-detail">
+                <span class="wallet-icon">🌐</span>
+                <span id="networkName" class="wallet-text"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1>₿ Bitcoin Memory Game</h1>
+            <p class="subtitle">Powered by Zama FHEVM - Fully Homomorphic Encryption</p>
+        </header>
+
+        <!-- Start Game Section -->
+        <div class="game-section game-main" id="startGameSection">
+            <h3>🎯 Start New Game</h3>
+            
+            <!-- Compact Game Status -->
+            <div class="compact-status" id="gameStatus">
+                <div class="compact-status-item">
+                    <span class="compact-label">🎮 Game Status:</span>
+                    <span id="isActive" class="compact-value">-</span>
+                </div>
+                <div class="compact-status-item">
+                    <span class="compact-label">✅ Played:</span>
+                    <span id="hasPlayed" class="compact-value">-</span>
+                </div>
+                <div class="compact-status-item">
+                    <span class="compact-label">⏰ Time Left:</span>
+                    <span id="timeRemaining" class="compact-value">-</span>
+                </div>
+            </div>
+            
+            <!-- Simple Bitcoin Choices -->
+            <div class="bitcoin-choices">
+                <div class="bitcoin-card" data-choice="0">
+                    <div class="bitcoin-icon">₿</div>
+                    <div class="bitcoin-name">Bitcoin </div>
+                </div>
+                <div class="bitcoin-card" data-choice="1">
+                    <div class="bitcoin-icon">₿</div>
+                    <div class="bitcoin-name">Bitcoin </div>
+                </div>
+                <div class="bitcoin-card" data-choice="2">
+                    <div class="bitcoin-icon">₿</div>
+                    <div class="bitcoin-name">Bitcoin </div>
+                </div>
+            </div>
+            <div class="button-container">
+                <button id="startGameBtn" class="btn btn-success" disabled>
+                    🚀 Start Game with Selected Choice
+                </button>
+                <div class="inline-loading" id="startGameLoading">
+                    <div class="inline-loading-spinner"></div>
+                    <div class="inline-loading-text">Processing...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reveal Section -->
+        <div class="game-section game-main hidden" id="revealSection">
+            <h3>🎯 Reveal Your Second Choice</h3>
+            <p class="info-text">Wait time has elapsed! Now choose your second Bitcoin.</p>
+            <div class="bitcoin-choices">
+                <div class="bitcoin-card" data-choice="0">
+                    <div class="bitcoin-icon">₿</div>
+                    <div class="bitcoin-name">Bitcoin </div>
+                </div>
+                <div class="bitcoin-card" data-choice="1">
+                    <div class="bitcoin-icon">₿</div>
+                    <div class="bitcoin-name">Bitcoin </div>
+                </div>
+                <div class="bitcoin-card" data-choice="2">
+                    <div class="bitcoin-icon">₿</div>
+                    <div class="bitcoin-name">Bitcoin </div>
+                </div>
+            </div>
+            <div class="button-container">
+                <button id="revealBtn" class="btn btn-success" disabled>
+                    🎲 Reveal Second Choice
+                </button>
+                <div class="inline-loading" id="revealLoading">
+                    <div class="inline-loading-spinner"></div>
+                    <div class="inline-loading-text">Processing...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Waiting Section -->
+        <div class="game-section game-main hidden" id="waitingSection">
+            <h3>🔐 Encryption in Progress</h3>
+            <div class="countdown-container">
+                <div class="countdown-circle">
+                    <span id="countdownTimer">10</span>
+                </div>
+                <p class="countdown-text">seconds remaining</p>
+            </div>
+            <p class="info-text">
+                Your first Bitcoin choice has been encrypted and submitted to the blockchain. 
+                The system is now shuffling the positions to ensure privacy...
+            </p>
+            <button id="resetGameBtn" class="btn btn-warning">
+                🔄 Reset Game
+            </button>
+        </div>
+
+        <!-- Game Instructions -->
+        <div class="instructions">
+            <h3>🎮 How to Play</h3>
+            <ol>
+                <li>Choose your first Bitcoin (encrypted) 🔐</li>
+                <li>Wait 10 seconds ⏰</li>
+                <li>Choose your second Bitcoin (encrypted) 🔐</li>
+                <li>The contract compares both choices using FHE 🧮</li>
+                <li>If they match, you win! 🎉</li>
+            </ol>
+            <div class="fhe-badge">
+                <strong>🔒 Privacy Guaranteed:</strong> Your choices are encrypted end-to-end. 
+                Even the blockchain cannot see your selections!
+            </div>
+        </div>
+
+        <!-- Loading Overlay -->
+        <div class="loading-overlay hidden" id="loadingOverlay">
+            <div class="loading-spinner"></div>
+            <p id="loadingText">Processing...</p>
+        </div>
+        
+        <!-- 10秒倒计时动画覆盖层 -->
+        <div class="countdown-overlay hidden" id="countdownOverlay">
+            <div class="countdown-container">
+                <div class="countdown-title">₿ Bitcoin Position Shuffling</div>
+                <div class="countdown-bitcoin">₿</div>
+                <div class="countdown-number" id="countdownNumber">10</div>
+                <div class="countdown-message" id="countdownMessage">Preparing your encrypted game...</div>
+                <div class="countdown-progress">
+                    <div class="countdown-progress-bar" id="countdownProgressBar"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script type="module" src="app.js"></script>
+</body>
+</html>

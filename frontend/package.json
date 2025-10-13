@@ -1,0 +1,19 @@
+{
+  "name": "apple-game-frontend",
+  "version": "1.0.0",
+  "description": "Apple Guessing Game Frontend with Real FHE Encryption",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@zama-fhe/relayer-sdk": "^0.2.0",
+    "ethers": "^6.15.0"
+  },
+  "devDependencies": {
+    "vite": "^5.4.0"
+  }
+}
+

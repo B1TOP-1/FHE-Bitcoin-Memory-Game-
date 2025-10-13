@@ -1,0 +1,25 @@
+# Hardhat files
+cache/
+artifacts/
+fhevmTemp/
+
+# TypeChain files
+types/
+
+# Coverage directory
+coverage/
+coverage.json
+
+# Dependency directories
+node_modules/
+
+# TypeScript build output
+dist/
+
+# Environment variables
+.env
+.env.local
+
+# Logs
+*.log
+
