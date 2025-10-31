@@ -95,10 +95,23 @@ const SEPOLIA_CHAIN_ID = 11155111;
 - Verify contract address is correct
 - Make sure you're on Sepolia network
 
+### "This browser does not support threads"
+- **Development**: The Vite dev server is already configured with the required CORS headers
+- **Production**: Ensure your server returns these headers:
+  - `Cross-Origin-Opener-Policy: same-origin`
+  - `Cross-Origin-Embedder-Policy: require-corp`
+- These headers are required for WebAssembly SharedArrayBuffer support (needed by FHEVM)
+- If deploying to a hosting service, configure these headers in your server/cloud config
+
 ### Transaction Failed
 - Ensure you have enough Sepolia ETH
 - Check if game is in correct state
 - Try resetting the game
+
+### Third-party Script Errors
+- Errors from browser extensions (like `_url.indexOf`) are automatically filtered
+- These don't affect the game functionality
+- If you see other errors, check the browser console for details
 
 ## 📄 License
 

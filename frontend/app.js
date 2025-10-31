@@ -27,6 +27,60 @@ let selectedChoice = null;
 let countdownInterval = null;
 let isProcessing = false; // 防止重复点击
 
+// Helper function to get the correct Ethereum provider
+function getEthereumProvider() {
+    if (typeof window.ethereum === 'undefined') {
+        return null;
+    }
+    
+    // Handle multiple wallet providers (e.g., MetaMask + Coinbase Wallet)
+    if (window.ethereum.providers && Array.isArray(window.ethereum.providers)) {
+        // Prefer MetaMask if available
+        return window.ethereum.providers.find(
+            (p) => p.isMetaMask === true
+        ) || window.ethereum.providers[0];
+    }
+    
+    return window.ethereum;
+}
+
+// Global error handler to filter out third-party library errors
+window.addEventListener('error', (event) => {
+    // Filter out known third-party errors that don't affect functionality
+    const errorMessage = event.message || '';
+    const errorSource = event.filename || '';
+    
+    // Ignore errors from injected scripts (browser extensions, etc.)
+    if (errorSource.includes('injected') || 
+        errorSource.includes('contentScript') ||
+        errorMessage.includes('indexOf') ||
+        errorMessage.includes('_url')) {
+        event.preventDefault(); // Prevent error from showing in console
+        return false;
+    }
+    
+    // Log other errors for debugging
+    console.warn('Unhandled error:', event.error);
+    return true;
+});
+
+// Handle unhandled promise rejections
+window.addEventListener('unhandledrejection', (event) => {
+    const errorMessage = event.reason?.message || String(event.reason || '');
+    const errorStack = event.reason?.stack || '';
+    
+    // Filter out known third-party errors
+    if (errorMessage.includes('indexOf') || 
+        errorMessage.includes('_url') ||
+        errorStack.includes('injected')) {
+        event.preventDefault();
+        return false;
+    }
+    
+    console.warn('Unhandled promise rejection:', event.reason);
+    return true;
+});
+
 // Initialize app
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('₿ Bitcoin Game Frontend Initialized');
@@ -41,9 +95,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     // Check if already connected
-    const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-    if (accounts.length > 0) {
-        await connectWallet();
+    const ethereum = getEthereumProvider();
+    if (ethereum) {
+        try {
+            const accounts = await ethereum.request({ method: 'eth_accounts' });
+            if (accounts.length > 0) {
+                await connectWallet();
+            }
+        } catch (error) {
+            console.error('Error checking accounts:', error);
+            // Continue anyway, user can click connect button
+        }
     }
 });
 
@@ -64,9 +126,15 @@ function setupEventListeners() {
         card.addEventListener('click', () => selectBitcoin(card, 'reveal'));
     });
     
-    // Listen for account changes
-    window.ethereum.on('accountsChanged', handleAccountsChanged);
-    window.ethereum.on('chainChanged', () => window.location.reload());
+    // Listen for account changes (only if ethereum provider exists)
+    if (typeof window.ethereum !== 'undefined') {
+        try {
+            window.ethereum.on('accountsChanged', handleAccountsChanged);
+            window.ethereum.on('chainChanged', () => window.location.reload());
+        } catch (error) {
+            console.warn('Failed to set up ethereum event listeners:', error);
+        }
+    }
 }
 
 // Connect Wallet
@@ -74,13 +142,14 @@ async function connectWallet() {
     try {
         showLoading('Connecting wallet...');
         
-        // Check if MetaMask is installed
-        if (!window.ethereum) {
+        // Get the correct Ethereum provider
+        const ethereum = getEthereumProvider();
+        if (!ethereum) {
             throw new Error('MetaMask is not installed. Please install MetaMask to continue.');
         }
         
         // Request account access
-        const accounts = await window.ethereum.request({ 
+        const accounts = await ethereum.request({ 
             method: 'eth_requestAccounts' 
         });
         
@@ -91,7 +160,7 @@ async function connectWallet() {
         userAddress = accounts[0];
         
         // Setup provider and signer
-        provider = new ethers.BrowserProvider(window.ethereum);
+        provider = new ethers.BrowserProvider(ethereum);
         signer = await provider.getSigner();
         
         // Check network and auto-switch if needed
@@ -99,7 +168,7 @@ async function connectWallet() {
         if (Number(network.chainId) !== SEPOLIA_CHAIN_ID) {
             try {
                 // Try to switch to Sepolia
-                await window.ethereum.request({
+                await ethereum.request({
                     method: 'wallet_switchEthereumChain',
                     params: [{ chainId: '0xaa36a7' }], // Sepolia chain ID
                 });
@@ -108,7 +177,7 @@ async function connectWallet() {
             } catch (switchError) {
                 // If Sepolia is not added, add it
                 if (switchError.code === 4902) {
-                    await window.ethereum.request({
+                    await ethereum.request({
                         method: 'wallet_addEthereumChain',
                         params: [{
                             chainId: '0xaa36a7',
@@ -154,7 +223,20 @@ async function connectWallet() {
         hideLoading();
     } catch (error) {
         console.error('Connection error:', error);
-        alert(`Failed to connect: ${error.message}`);
+        
+        // Provide more specific error messages
+        let errorMessage = 'Failed to connect wallet';
+        if (error.code === 4001) {
+            errorMessage = 'Wallet connection rejected. Please approve the connection request.';
+        } else if (error.code === -32002) {
+            errorMessage = 'Wallet connection request already pending. Please check your wallet.';
+        } else if (error.message) {
+            errorMessage = `Failed to connect: ${error.message}`;
+        } else if (error.error && error.error.message) {
+            errorMessage = `Failed to connect: ${error.error.message}`;
+        }
+        
+        alert(errorMessage);
         hideLoading();
     }
 }
@@ -166,9 +248,14 @@ async function initializeFHEVM() {
         await initSDK();
         
         // Step 2: Create instance with Sepolia config
+        const ethereum = getEthereumProvider();
+        if (!ethereum) {
+            throw new Error('Ethereum provider not available');
+        }
+        
         const config = {
             ...SepoliaConfig,
-            network: window.ethereum,
+            network: ethereum,
             contractAddress: CONTRACT_ADDRESS,
             publicKey: undefined // Will be fetched automatically
         };
